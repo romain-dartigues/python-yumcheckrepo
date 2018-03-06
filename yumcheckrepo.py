@@ -5,7 +5,6 @@
 # stdlib
 import atexit
 import logging
-import multiprocessing.pool
 import optparse
 import os
 import shutil
@@ -13,12 +12,15 @@ import sys
 
 # dependencies
 import yum # tested against version 3.4.3
+import yum.Errors
 
 
 
 
 
 logger = logging.getLogger(__file__)
+EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
 
 
 
@@ -56,6 +58,7 @@ class NotYumBase(yum.YumBase):
 			)
 			raise IOError
 
+		logger.debug('cache_dir: %s', cache_dir)
 		self.setCacheDir(
 			force=True,
 			reuse=False,
@@ -73,60 +76,79 @@ class NotYumBase(yum.YumBase):
 
 		:param repository:
 		:type repository: str or yum.yumRepo.YumRepository
-		:rtype: list
-		:return: list of errors or empty list if none
+		:rtype: bool
+		:raise: never
 		'''
+		result = None
 		try:
 			if not isinstance(repository, yum.yumRepo.YumRepository):
 				repository = self.repos.repos[repository]
-			return repository.verify()
+			result = repository._getFileRepoXML(
+				repository.cachedir + '/repomd.xml',
+			)
 		except KeyError:
-			return ['repository not found: %s' % (repository,)]
-		except BaseException as error:
-			return ['exception: %s' % (error,)]
+			logger.error('repository not found: %r', repository)
+		except yum.Errors.RepoError:
+			logger.error(
+				'repository in error: %s',
+				repository.id,
+				exc_info=True
+			)
+		except:
+			logger.error(
+				'unhandled exception for: %s',
+				repository.id,
+				exc_info=True
+			)
+
+		if result is None:
+			logger.error('unable to access: %s', repository.id)
+			return False
+
+		return True
 
 
 	def check_repositories(self, repositories):
 		'''
-		:param list repositories: list of :class:`yum.yumRepo.YumRepository`
-		:return: a list of problems per repository ID
-		:rtype: dict
+		:param repositories:
+		:type repositories: list(yum.yumRepo.YumRepository)
+		:rtype: list(tuple(str, bool))
 		'''
-#		pool = multiprocessing.pool.ThreadPool(
-#			processes=len(repositories),
-#		)
-		pool = multiprocessing.pool.Pool(
-			processes=len(repositories),
-		)
+		return [
+			(repository.id, self.check_repository(repository.id))
+			for repository in repositories
+		]
 
-		results = []
-		for repository in repositories:
-			results+= [(
-				repository.id,
-				pool.apply_async(
-					self.check_repository,
-					(repository.id,),
-				),
-#				pool.apply_async(repository.verify),
-			)]
 
-		problems = {}
-		for repo_id, job in results:
-			try:
-				data = job.get()
-			except BaseException as error:
-				logger.warning(
-					'%s: %r %s',
-					repo_id,
-					error,
-					error,
-					exc_info=True
-				)
-				data = error
-			if data:
-				problems[repo_id] = data
 
-		return problems
+def check_and_show(yb, repositories, nagios=False):
+	'''
+	:param yum.YumBase yb:
+	:param repositories:
+	:type repositories: list(yum.yumRepo.YumRepository)
+	'''
+	status = EXIT_SUCCESS
+	data = yb.check_repositories(repositories)
+	data.sort()
+
+	if nagios:
+		# nagios is too dumb to read stderr
+		out = err = sys.stdout
+	else:
+		out, err = sys.stdout, sys.stderr
+
+	for repository_id, is_ok in data:
+		if is_ok:
+			out.write('OK: {}\n'.format(repository_id))
+		else:
+			err.write('FAIL: {}\n'.format(repository_id))
+			status = EXIT_FAILURE
+
+	if status != EXIT_SUCCESS and nagios:
+		return 2
+
+	return status
+
 
 
 
@@ -165,7 +187,7 @@ def main():
 
 	if opt.man:
 		help(__name__)
-		return os.EX_OK
+		return EXIT_SUCCESS
 
 	yb = NotYumBase(opt.conf)
 
@@ -177,7 +199,7 @@ def main():
 			sys.stdout.write(
 				'{}: {}\n'.format(repo.id, repo.name)
 			)
-		return os.EX_OK
+		return EXIT_SUCCESS
 
 	if args:
 		args = set(args)
@@ -204,21 +226,7 @@ def main():
 		return os.EX_CONFIG
 
 	# ...
-	problems = yb.check_repositories(repositories)
-	if problems:
-		logger.warning(
-			'problem(s) found',
-		)
-		for repo_id, data in problems.iteritems():
-			sys.stderr.write(
-				'{}: {}\n'.format(
-					repo_id,
-					', '.join(sorted(data)),
-				)
-			)
-		return 1
-
-	return os.EX_OK
+	return check_and_show(yb, repositories, nagios=opt.nagios)
 
 
 
