@@ -1,5 +1,13 @@
 #!/usr/bin/env python
-'''test if YUM repositories are reachables
+'''test if :abbr:`YUM (Yellowdog Updater, Modified)` repositories are reachable
+
+Main features:
+
+* run as user (does not require administrative privileges)
+* can use a custom list of repositories
+* `Nagios plugin API`_ compatible
+
+.. _Nagios plugin API: https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/pluginapi.html
 '''
 
 # stdlib
@@ -28,13 +36,13 @@ EXIT_FAILURE = 1
 
 class NotYumBase(yum.YumBase):
 	def __init__(self, conf=None):
-		'''create a new YumBase
+		'''custom initialization
 
-		Inspiration from: pakrat_: pakrat.pakrat.yumbase.YumBase
+		Inspiration from: pakrat_ 0.3.2: ``pakrat.pakrat.yumbase.YumBase``
 
 		.. _pakrat: https://github.com/ryanuber/pakrat/
 
-		:param str conf: path to a yum.conf
+		:param str conf: path to a :file:`yum.conf`
 		'''
 		yum.YumBase.__init__(self)
 		self.preconf = yum._YumPreBaseConf()
@@ -72,10 +80,10 @@ class NotYumBase(yum.YumBase):
 
 
 	def check_repository(self, repository):
-		'''call :meth:`yum.yumRepo.YumRepository.verify` and catch errors
+		'''attempt to load remote repository metadata
 
 		:param repository:
-		:type repository: str or yum.yumRepo.YumRepository
+		:type repository: str or ~yum.yumRepo.YumRepository
 		:rtype: bool
 		:raise: never
 		'''
@@ -109,9 +117,10 @@ class NotYumBase(yum.YumBase):
 
 
 	def check_repositories(self, repositories):
-		'''
+		'''call :meth:`check_repository` on each
+
 		:param repositories:
-		:type repositories: list(yum.yumRepo.YumRepository)
+		:type repositories: list(~yum.yumRepo.YumRepository)
 		:rtype: list(tuple(str, bool))
 		'''
 		return [
@@ -124,8 +133,10 @@ class NotYumBase(yum.YumBase):
 def check_and_show(yb, repositories, nagios=False):
 	'''
 	:param yum.YumBase yb:
-	:param repositories:
-	:type repositories: list(yum.yumRepo.YumRepository)
+	:param list repositories: list of repositories to check
+	:param bool nagios: if True, change output and return code
+	                    to be Nagios compatible
+	:type repositories: list(~yum.yumRepo.YumRepository)
 	'''
 	status = EXIT_SUCCESS
 	data = yb.check_repositories(repositories)
@@ -153,7 +164,7 @@ def check_and_show(yb, repositories, nagios=False):
 
 
 def main():
-	'''CLI
+	''':abbr:`CLI (Command Line Interface)`
 
 	:rtype: int
 	'''
