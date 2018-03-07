@@ -36,7 +36,7 @@ EXIT_FAILURE = 1
 
 
 class NotYumBase(yum.YumBase):
-	def __init__(self, conf=None):
+	def __init__(self, conf=None, reposdir=None):
 		'''custom initialization
 
 		Inspiration from: pakrat_ 0.3.2: ``pakrat.pakrat.yumbase.YumBase``
@@ -44,6 +44,8 @@ class NotYumBase(yum.YumBase):
 		.. _pakrat: https://github.com/ryanuber/pakrat/
 
 		:param str conf: path to a :file:`yum.conf`
+		:param reposdir: override configuration "reposdir"
+		:type reposdir: None or list(str)
 		'''
 		yum.YumBase.__init__(self)
 		self.preconf = yum._YumPreBaseConf()
@@ -52,7 +54,7 @@ class NotYumBase(yum.YumBase):
 		self.preconf.debuglevel = 0
 		self.prerepoconf = yum._YumPreRepoConf()
 		self.__setTemporaryCacheDir()
-		self.__fix_paths()
+		self.__fix_paths(reposdir)
 
 
 	def __setTemporaryCacheDir(self):
@@ -81,20 +83,35 @@ class NotYumBase(yum.YumBase):
 		)
 
 
-	def __fix_paths(self):
+	def __fix_paths(self, reposdir=None):
+		'''
+		:param reposdir: override configuration "reposdir"
+		:type reposdir: None or list(str)
+		'''
 		conf_pwd = os.path.dirname(
 			os.path.realpath(self.conf.config_file_path)
 		)
 
-		reposdir = []
-		for item in set(self.conf.reposdir):
+		if reposdir is None:
+			reposdir = self.conf.reposdir
+			reposdir_pwd = conf_pwd
+		else:
+			reposdir_pwd = os.getcwd()
+
+		self.conf.reposdir = []
+		for item in set(reposdir):
 			if not os.path.isabs(item):
-				item = os.path.join(
-					conf_pwd,
-					item,
+				item = os.path.realpath(
+					os.path.join(
+						reposdir_pwd,
+						item,
+					)
 				)
-			reposdir+= [item]
-		self.conf.reposdir = reposdir
+			self.conf.reposdir+= [item]
+		logger.debug(
+			'conf.reposdir: %s',
+			', '.join(self.conf.reposdir),
+		)
 
 
 	def check_repository(self, repository):
@@ -196,6 +213,8 @@ def main():
 	group = optparse.OptionGroup(parser, 'YUM configuration')
 	group.add_option('-c', '--conf', default=_yumprebaseconf.fn,
 		help='path to configuration file (%default)')
+	group.add_option('-R', '--reposdir', action='append',
+		help='override yum.conf "reposdir"')
 	group.add_option('--logfile', default='/dev/stderr',
 		help='path to log file (%default)')
 	parser.add_option_group(group)
@@ -218,7 +237,7 @@ def main():
 		help(__name__)
 		return EXIT_SUCCESS
 
-	yb = NotYumBase(opt.conf)
+	yb = NotYumBase(opt.conf, opt.reposdir)
 
 	yb.conf.logfile = opt.logfile
 
