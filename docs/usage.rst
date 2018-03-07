@@ -110,3 +110,19 @@ Suppress logs, use Nagios compatibility and limit to only some repositories:
 
    user@darkstar:~$ echo $?
    2
+
+Use a custom ``yum.conf``:
+
+.. code-block:: console
+
+   user@darkstar:~$ tree --noreport /path/to/custom/conf/
+   /path/to/custom/conf/
+   ├── yum.conf
+   └── yum.repos.d
+       └── epel.repo
+
+   user@darkstar:~$ yumcheckrepo --list-repos \
+     -c /path/to/custom/conf/yum.conf
+   epel: Extra Packages for Enterprise Linux 7 - x86_64
+   epel-debuginfo: Extra Packages for Enterprise Linux 7 - x86_64 - Debug
+   epel-source: Extra Packages for Enterprise Linux 7 - x86_64 - Source
