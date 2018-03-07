@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# vim:set noet fileencoding=utf8:
 '''test if :abbr:`YUM (Yellowdog Updater, Modified)` repositories are reachable
 
 Main features:
@@ -51,7 +52,6 @@ class NotYumBase(yum.YumBase):
 		self.preconf = yum._YumPreBaseConf()
 		if conf is not None:
 			self.preconf.fn = conf
-		self.preconf.debuglevel = 0
 		self.prerepoconf = yum._YumPreRepoConf()
 		self.__setTemporaryCacheDir()
 		self.__fix_paths(reposdir)
@@ -70,7 +70,7 @@ class NotYumBase(yum.YumBase):
 			)
 			raise IOError
 
-		logger.debug('cache_dir: %s', cache_dir)
+		logger.debug('conf.cache_dir: %s', cache_dir)
 		self.setCacheDir(
 			force=True,
 			reuse=False,
