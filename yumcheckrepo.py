@@ -52,6 +52,7 @@ class NotYumBase(yum.YumBase):
 		self.preconf.debuglevel = 0
 		self.prerepoconf = yum._YumPreRepoConf()
 		self.__setTemporaryCacheDir()
+		self.__fix_paths()
 
 
 	def __setTemporaryCacheDir(self):
@@ -78,6 +79,22 @@ class NotYumBase(yum.YumBase):
 			path=cache_dir,
 			ignore_errors=True,
 		)
+
+
+	def __fix_paths(self):
+		conf_pwd = os.path.dirname(
+			os.path.realpath(self.conf.config_file_path)
+		)
+
+		reposdir = []
+		for item in set(self.conf.reposdir):
+			if not os.path.isabs(item):
+				item = os.path.join(
+					conf_pwd,
+					item,
+				)
+			reposdir+= [item]
+		self.conf.reposdir = reposdir
 
 
 	def check_repository(self, repository):
