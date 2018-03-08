@@ -179,9 +179,15 @@ def check_and_show(yb, repositories, nagios=False):
 
 	if nagios:
 		# nagios is too dumb to read stderr
-		out = err = sys.stdout
+		# even if it's said multi-lines output is supported,
+		# it does not seems to be always the case
+		fmt = '{}: {}; '.format
+		stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+		out = err = lambda *a: stdout.write(fmt(*a))
 	else:
-		out, err = sys.stdout, sys.stderr
+		fmt = '{}: {}\n'.format
+		out = lambda *a: sys.stdout.write(fmt(*a))
+		err = lambda *a: sys.stderr.write(fmt(*a))
 
 	for repository_id, is_ok in data:
 		if is_ok:
@@ -191,6 +197,7 @@ def check_and_show(yb, repositories, nagios=False):
 			status = EXIT_FAILURE
 
 	if status != EXIT_SUCCESS and nagios:
+		sys.stdout.write('\n')
 		return 2
 
 	return status
