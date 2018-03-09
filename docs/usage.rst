@@ -105,8 +105,7 @@ Suppress logs, use Nagios compatibility and limit to only some repositories:
 .. code-block:: console
 
    user@darkstar:~$ yumcheckrepo -q --nagios epel fusiondirectory
-   OK: epel
-   FAIL: fusiondirectory
+   FAIL: fusiondirectory; OK: epel; 
 
    user@darkstar:~$ echo $?
    2

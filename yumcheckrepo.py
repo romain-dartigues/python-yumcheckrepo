@@ -294,30 +294,43 @@ def check_and_show(yb, repositories, nagios=False):
 	'''
 	status = EXIT_SUCCESS
 	data = yb.check_repositories(repositories)
-	data.sort()
+	title = ('FAIL', 'OK')
 
 	if nagios:
 		# nagios is too dumb to read stderr
-		# even if it's said multi-lines output is supported,
+		# and even if it's said multi-lines output is supported,
 		# it does not seems to be always the case
-		fmt = '{}: {}; '.format
-		stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-		out = err = lambda *a: stdout.write(fmt(*a))
-	else:
-		fmt = '{}: {}\n'.format
-		out = lambda *a: sys.stdout.write(fmt(*a))
-		err = lambda *a: sys.stderr.write(fmt(*a))
+		classified = ([], [])
+
+		for name, is_ok in data:
+			classified[is_ok].append(name)
+
+		for k in (False, True):
+			if classified[k]:
+				classified[k].sort()
+				sys.stdout.write(
+					'{}: {}; '.format(
+						title[k],
+						', '.join(classified[k])
+					)
+				)
+
+		sys.stdout.write('\n')
+		return 2 if classified[False] else status
+
+	data.sort()
+	fmt = '{}: {}\n'.format
+	out = lambda *a: sys.stdout.write(fmt(*a))
+	err = lambda *a: sys.stderr.write(fmt(*a))
 
 	for repository_id, is_ok in data:
 		if is_ok:
-			out.write('OK: {}\n'.format(repository_id))
+			write = out
 		else:
-			err.write('FAIL: {}\n'.format(repository_id))
+			write = err
 			status = EXIT_FAILURE
 
-	if status != EXIT_SUCCESS and nagios:
-		sys.stdout.write('\n')
-		return 2
+		write(title[is_ok], repository_id)
 
 	return status
 
