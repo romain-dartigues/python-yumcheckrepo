@@ -166,6 +166,7 @@ class NotYumBase(yum.YumBase):
 		:raise: never
 		'''
 		result = None
+		error = None
 		try:
 			if not isinstance(repository, yum.yumRepo.YumRepository):
 				repository = self.repos.repos[repository]
@@ -174,20 +175,24 @@ class NotYumBase(yum.YumBase):
 			)
 		except KeyError:
 			logger.error('repository not found: %r', repository)
-		except yum.Errors.RepoError:
+		except yum.Errors.RepoError as error:
 			logger.error(
 				'repository in error: %s',
 				repository.id,
-				exc_info=True
 			)
-		except:
+		except Exception as error:
 			logger.error(
 				'unhandled exception for: %s',
 				repository.id,
-				exc_info=True
 			)
 
 		if result is None:
+			if error:
+				logger.debug(
+					'last exception: %s',
+					error,
+					exc_info=error
+				)
 			logger.error('unable to access: %s', repository.id)
 			return False
 
