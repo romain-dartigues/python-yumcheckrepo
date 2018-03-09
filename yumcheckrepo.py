@@ -13,10 +13,12 @@ Main features:
 
 # stdlib
 import atexit
+import fnmatch
 import logging
 import optparse
 import os
 import posix
+import re
 import shutil
 import sys
 
@@ -206,6 +208,53 @@ class NotYumBase(yum.YumBase):
 
 
 
+class RepoStorage:
+	'''add features to :class:`yum.repos.RepoStorage`
+	'''
+	not_clean_programming = True
+
+	def findReposList(self, patterns, name_match=False, ignore_case=False):
+		'''find repositories by matching their ID
+
+		See: :meth:`~yum.repos.RepoStorage.findRepos`
+
+		:param list patterns:
+		:param bool name_match:
+		:param bool ignore_case:
+		:rtype: list(:class:`~yum.yumRepo.YumRepository`)
+		:raise: Sysexit
+		'''
+		if isinstance(patterns, basestring):
+			patterns = patterns.split(',')
+		patterns = set(patterns)
+		suffix_len = len(fnmatch.translate(''))
+		r_patterns = re.compile(
+			r'^({})$'.format(
+				'|'.join(
+					fnmatch.translate(pattern)[:-suffix_len]
+					for pattern in patterns
+				)
+			),
+			ignore_case and re.I or 0
+		)
+
+		repositories = {
+			repo_id: repo
+			for repo_id, repo in self.repos.items()
+			if r_patterns.match(repo_id)
+		}
+
+		if not repositories:
+			raise Sysexit(
+				os.EX_NOINPUT,
+				'no match',
+			)
+
+		return repositories
+
+
+
+
 def check_and_show(yb, repositories, nagios=False):
 	'''
 	:param yum.YumBase yb:
@@ -323,6 +372,13 @@ def main():
 
 	# ...
 	return check_and_show(yb, repositories, nagios=opt.nagios)
+
+
+
+
+
+if not hasattr(yum.repos.RepoStorage, 'not_clean_programming'):
+	yum.repos.RepoStorage.__bases__+= (RepoStorage,)
 
 
 
