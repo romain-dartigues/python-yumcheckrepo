@@ -16,6 +16,7 @@ import atexit
 import logging
 import optparse
 import os
+import posix
 import shutil
 import sys
 
@@ -33,6 +34,46 @@ EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 
 
+
+
+
+class Sysexit(SystemExit):
+	'''inspiration from BSD `sysexits.h`
+
+	.. Warning::
+	   As it subclass :exception:`SystemExit`,
+	   the Python interpreter exits on unhandled raises.
+
+	See also:
+
+	* :manpage:`exit(3)`
+	* :func:`os._exit` and the following exit codes
+	'''
+	def __init__(self, code, message=None):
+		'''
+		:param int code:
+		:param str message:
+		'''
+		super(Sysexit, self).__init__(code)
+		self.message = message
+
+
+	def __str__(self):
+		return '' if self.message is None else self.message
+
+
+	def __repr__(self):
+		for k, v in posix.__dict__.items():
+			if k[:3] == 'EX_' and v == self.code:
+				data = k
+				break
+		else:
+			data = '[{}]'.format(self.code)
+
+		if self.message:
+			data+= ': {}'.format(self.message)
+
+		return data
 
 
 
