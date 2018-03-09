@@ -5,7 +5,7 @@
 Main features:
 
 * run as user (does not require administrative privileges)
-* can use a custom list of repositories
+* parse standard "yum.conf" and/or "repo" files, system-wide or not
 * `Nagios plugin API`_ compatible
 
 .. _Nagios plugin API: https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/pluginapi.html
@@ -127,7 +127,8 @@ class NotYumBase(yum.YumBase):
 
 
 	def __fix_paths(self, reposdir=None):
-		'''
+		'''fix reposdir path from relative to absolute
+
 		:param reposdir: override configuration "reposdir"
 		:type reposdir: None or list(str)
 		'''
