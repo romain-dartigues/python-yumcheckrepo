@@ -30,7 +30,7 @@ import yum.Errors
 
 
 
-__version__ = '0.0.2'
+__version__ = '0.0.3a0'
 logger = logging.getLogger(__file__)
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
