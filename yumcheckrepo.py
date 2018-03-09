@@ -364,6 +364,10 @@ def main():
 
 	yb.conf.logfile = opt.logfile
 
+	if not yb.repos:
+		logger.error('no repository found in configuration')
+		return os.EX_CONFIG
+
 	# act!
 	if opt.list_repos:
 		fmt = '{0.id}\n' if opt.short else '{0.id}: {0.name}\n'
