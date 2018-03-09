@@ -213,6 +213,70 @@ class RepoStorage:
 	'''
 	not_clean_programming = True
 
+	def findReposStrict(self, patterns, name_match=False, ignore_case=False):
+		'''find repositories by matching their ID
+		failing when pattern has no results
+
+		See: :meth:`~yum.repos.RepoStorage.findRepos`
+
+		:param patterns:
+		:type patterns: str or list
+		:param bool name_match:
+		:param bool ignore_case:
+		:rtype: list(:class:`~yum.yumRepo.YumRepository`)
+		:raise: Sysexit
+		'''
+		if isinstance(patterns, basestring):
+			patterns = patterns.split(',')
+		flag = ignore_case and re.I or 0
+		patterns = {
+			pattern: re.compile(
+				fnmatch.translate(pattern),
+				flag
+			).match
+			for pattern in patterns
+			if pattern
+		}
+		repositories = {}
+		matched = set()
+
+		if not patterns:
+			return self.repos
+
+		if not self.repos:
+			raise Sysexit(
+				os.EX_CONFIG,
+				'no repository found in configuration',
+			)
+
+		for repo_id, repo in self.repos.items():
+			for pattern, match in patterns.items():
+				if match(repo_id):
+					repositories[repo_id] = repo
+					matched.add(pattern)
+				elif name_match and match(repo.name):
+					repositories[repo_id] = repo
+					matched.add(pattern)
+
+		invalid = matched.symmetric_difference(patterns)
+		if invalid:
+			raise Sysexit(
+				os.EX_USAGE,
+				'invalid repositor{}: {}'.format(
+					'y' if len(invalid) == 1 else 'ies',
+					', '.join(sorted(invalid)),
+				),
+			)
+
+		if not repositories:
+			raise Sysexit(
+				os.EX_NOINPUT,
+				'no match',
+			)
+
+		return repositories
+
+
 	def findReposList(self, patterns, name_match=False, ignore_case=False):
 		'''find repositories by matching their ID
 
@@ -340,35 +404,17 @@ def main():
 
 	# act!
 	if opt.list_repos:
-		for repo in yb.repos.repos.itervalues():
+		for repo in yb.repos.findReposStrict(args).values():
 			sys.stdout.write(
 				'{}: {}\n'.format(repo.id, repo.name)
 			)
 		return EXIT_SUCCESS
 
-	if args:
-		args = set(args)
-		invalid = args.difference(yb.repos.repos)
-		if invalid:
-			logger.error(
-				'invalid repositor%s: %s',
-				'y' if len(invalid) == 1 else 'ies',
-				', '.join(sorted(invalid)),
-			)
-			return os.EX_USAGE
-		repositories = [
-			repository
-			for repository in yb.repos.repos.itervalues()
-			if repository.id in args
-		]
-		if not repositories:
-			return os.EX_NOINPUT
-	else:
-		repositories = yb.repos.repos.values()
-
-	if not repositories:
-		logger.error('no repositories found')
-		return os.EX_CONFIG
+	try:
+		repositories = yb.repos.findReposStrict(args).values()
+	except Sysexit as error:
+		logger.error('%s', error.message)
+		return error.code
 
 	# ...
 	return check_and_show(yb, repositories, nagios=opt.nagios)
