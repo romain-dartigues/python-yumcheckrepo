@@ -341,10 +341,10 @@ def main():
 	parser.add_option_group(group)
 
 	group = optparse.OptionGroup(parser, 'Actions')
-	group.add_option('--list-repos', action='store_true', default=False)
-	group.add_option('--nagios', action='store_true', default=False,
+	group.add_option('-l', '--list-repos', action='store_true', default=False)
+	group.add_option('-N', '--nagios', action='store_true', default=False,
 		help='nagios compatible output and return codes')
-	group.add_option('--short', action='store_true', default=False,
+	group.add_option('-s', '--short', action='store_true', default=False,
 		help='short output')
 	parser.add_option_group(group)
 
