@@ -344,6 +344,8 @@ def main():
 	group.add_option('--list-repos', action='store_true', default=False)
 	group.add_option('--nagios', action='store_true', default=False,
 		help='nagios compatible output and return codes')
+	group.add_option('--short', action='store_true', default=False,
+		help='short output')
 	parser.add_option_group(group)
 
 	# parse options
@@ -364,9 +366,10 @@ def main():
 
 	# act!
 	if opt.list_repos:
+		fmt = '{0.id}\n' if opt.short else '{0.id}: {0.name}\n'
 		for repo in yb.repos.findReposStrict(args).values():
 			sys.stdout.write(
-				'{}: {}\n'.format(repo.id, repo.name)
+				fmt.format(repo)
 			)
 		return EXIT_SUCCESS
 
